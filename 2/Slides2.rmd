@@ -1,0 +1,316 @@
+---
+title: "Slides2MAP573"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lists
+
+
+```{r}
+mylist <- list(myvect = c(1,5,-3), mymat = matrix(1:9, nrow = 3, ncol = 3), 
+mychar = c("a","b"))
+
+class(mylist)
+length(mylist)
+
+names(mylist)
+
+mylist$myvect
+mylist[[2]]
+mylist[["mymat"]]
+
+# an element of a list can be a list
+bb <-list(onelist = mylist, y = c(1,2))
+length(bb)
+bb$onelist$mychar
+```
+
+## Apply
+
+```{r }
+getwd()
+rm(list=ls())
+library(FactoMineR)
+data(decathlon)
+summary(decathlon)
+# don <- read.csv("data/decathlon.csv", header = T, sep = ";", row.names = 1)
+```
+
+```{r }
+decathlon[1:5, ]
+#View(decathlon)
+#?decathlon
+dim(decathlon)
+rownames(decathlon)
+```
+
+```{r }
+moy <- apply(decathlon[, 1:10], 2, mean)
+moy
+```
+
+```{r }
+moy <- colMeans(decathlon[, 1:10])
+moy
+```
+
+## by
+
+```{r }
+agg <- by(decathlon[, 1:10], decathlon[, ncol(decathlon)], colMeans)
+agg
+agg[[1]]
+res <-matrix(0,2,10)
+res[1, ] <-agg[[1]]
+res[2, ] <-agg[[2]]
+res
+colnames(res) <- colnames(decathlon[, 1:10])
+```
+
+```{r }
+agg <- by(decathlon[, 1:10], decathlon[, ncol(decathlon)], apply, 2, mean)
+agg
+```
+
+
+## Sweep
+```{r }
+center <-sweep(decathlon[, 1:10], 2, STATS= moy, FUN = "-")
+apply(center, 2, mean)
+sdev <-apply(decathlon[, 1:10], 2, sd)
+centerscaled <-sweep(center, 2, STATS= sdev, FUN = "/")
+apply(centerscaled, 2, sd)
+```
+
+## Function
+
+```{r}
+Tocenterscale <- function(X){
+  moy <-apply(X, 2, mean)
+  center <-sweep(X, 2, STATS= moy, FUN = "-")
+sdev <-apply(center, 2, sd)
+centerscaled <-sweep(center, 2, STATS= sdev, FUN = "/")
+return(list(donscale = centerscaled, moy = moy, sdevlist = sdev))
+}
+```
+
+```{r}
+res <-Tocenterscale(decathlon[,1:10])
+names(res)
+#scale
+res$moy
+```
+
+```{r }
+lapply(decathlon, is.factor)
+sapply(decathlon, is.factor)
+```
+
+
+```{r}
+library(denoiseR)
+imputeada
+
+
+```
+
+
+
+```{r}
+Tocenterscale <- function(X){
+  if (sum(sapply(X, is.numeric)) < ncol(X)) {
+        stop("we need numeric varaibles only")
+}
+  moy <-apply(X, 2, mean)
+  center <-sweep(X, 2, STATS= moy, FUN = "-")
+sdev <-apply(X, 2, sd)
+centerscaled <-sweep(center, 2, STATS= sdev, FUN = "/")
+return(list(donscale = centerscaled, moy = moy, sdev = sdev))
+}
+#Tocenterscale(decathlon)
+```
+
+###
+
+```{r}
+vec <- c("A", "B", "C")
+"A" %in% vec
+vec <- c("B", "C")
+"A" %in% vec
+```
+
+
+```{r}
+txtvec <- c("arm","foot","lefroo", "bafoobar")
+grep("foo", txtvec)
+gsub("foo", txtvec, replacement = "DON")
+substr("extraction", 1,4 )
+```
+
+
+### Graphics 
+Studying the effect of a treatment on the weight of chickens.
+45 eggs, 3 treatments (temperature of incubtation), then chickens were weighted. 
+
+<!--Lors de leur mise en incubateur, 45 ÷ufs de poules ont été répartis de façon aléatoire en trois lots de 15. Trois
+traitements (températures d'incubation diérentes) ont ensuite été appliqués aux diérents lots. Nous supposons
+qu'après éclosion, les poussins ont tous été élevés dans des conditions identiques, puis pesés à un même âge de
+référence. À ce moment, le sexe des poussins, dont on sait a priori qu'il induit de fortes diérences de poids,
+pouvait aussi être observé. Les poids considérés, exprimés en décagrammes
+On souhaite d'une part vérier qu'il y a bien un eet sexe, et on veut d'autre part savoir s'il y a un eet
+traitement et une interaction entre le sexe et le traitement -->
+
+```{r}
+poussin <- read.table("/Users/josse/Documents/Cours/Polytechnique/StatwithR/bookdown-demo-master/data/poussin.txt", header=T)
+summary(poussin)
+```
+```{r}
+poussin[, 1:2] <- lapply(poussin[, 1:2], as.factor)
+levels(poussin[,2]) =  c("M", "F")
+summary(poussin)
+colnames(poussin)[3] = "weight"
+```
+
+
+
+```{r}
+hist(poussin[, "weight"], prob = TRUE, col = "red", 
+main= "Distribution of the weights",  xlab="Weight") 
+abline(v= median(poussin[, "weight"]), col="green", lty = 2)
+```
+
+
+
+```{r}
+hist(poussin[, "weight"], prob = TRUE, col = "red", main= "Distribution of the weights",  xlab="Weight", breaks = 20) 
+```
+
+```{r}
+boxplot(poussin[, "weight"],  ylab="Weight") 
+```
+
+```{r}
+barplot(table(poussin$Trait))
+barplot(table(poussin$Sexe))
+```
+
+
+```{r}
+boxplot(weight ~ Trait, data  = poussin)
+boxplot(weight ~ Sexe, data  = poussin)
+boxplot(weight ~ Trait*Sexe, data = poussin)
+table(poussin[, "Sexe"], poussin[, "Trait"])
+by(poussin[, 3], (poussin[,1:2]), mean)
+aggregate(poussin[, 3], list(poussin[,1], poussin[,2]), mean)
+```
+
+
+<!--Nous nous intéressons à l’équilibre des saveurs dans des cidres et plus précisément
+à la relation entre la saveur sucrée et la saveur amère en fonction du type de cidre
+(brut, demi-sec ou doux). Nous disposons de l’évaluation de la saveur sucrée et de
+la saveur amère fournie par un jury sensoriel (moyenne des notes, de 1 à 10, de 2 -->
+
+```{r}
+cider <- read.csv("/Users/josse/Documents/Cours/Polytechnique/StatwithR/bookdown-demo-master/data/cider.csv", sep = ",", header = T)
+plot(Sweetness~ Bitterness, data = cider)
+plot(Sweetness~ Bitterness,col=as.numeric(Type), 
+data=cider, pch=15, xlab = "")
+legend("topright",levels(cider$Type), 
+fil=1:nlevels(cider$Type), col=1:nlevels(cidre$Type))
+```
+
+
+```{r}
+boxplot(Sweetness~Type, data= cider)
+#identify(cider[,"Type"], cider[,"Sweetness"]) click
+
+res <- boxplot(cider[,"Sweetness"] ~ cider[,"Type"])
+names(res); res$out
+ind <- which((cider[cider[, "Type"]=="Sweet","Sweetness"])%in%(res$out))
+rownames(cider[cider[, "Type"]=="Sweet", ])[ind]
+```
+
+
+## graphics with ggplot 2
+```{r}
+library(ggplot2)
+ggplot(cider)+aes(x=Sweetness, y = ..density..)+geom_histogram()
+ggplot(cider)+aes(x= Bitterness, y =Sweetness)+geom_point()
+```
+
+```{r}
+ggplot(cider)+aes(x=Sweetness, y = ..density..)+geom_histogram()+ stat_bin(bins=30)
+```
+
+
+
+## options in aes relating to a variable in geom for general options
+<!--
+Les variables seront spécifiées dans la
+fonction aes. Cette fonction admet également des arguments tels que color, size,
+fill. Ces arguments sont à utiliser lorsqu’une couleur ou une taille est définie à
+partir d’une variable du jeu de données.-->
+```{r}
+ggplot(cider)+aes(x= Bitterness, y = Sweetness, col = Type)+geom_point()
+```
+
+
+```{r}
+ggplot(cider)+aes(x=Sweetness, y = Bitterness)+geom_point(color = "red")
+```
+
+```{r}
+ggplot(cider)+aes(x=Type)+geom_bar(fill="blue")
+```
+
+
+## arguments stats
+<!--même façon, les fonctions stat_... possèdent un argument geom. En modifiant
+cet argument, on changera la représentation graphique. Par exemple, la fonction
+stat_smooth, qui permet de faire le lissage d’un nuage de points, admet par défaut
+l’argument geom="smooth". Elle permettra de représenter le lissage accompagné
+d’une bande de confiance. Si on utilise geom="line", la bande de confiance ne sera
+plus représentée, avec geom="point" le lissage sera représenté en pointillé (voir
+-->
+
+
+```{r}
+ggplot(cider)+aes(x=Sweetness, y = Bitterness, col = "Type")+ geom_point(size = 0.5)+ stat_smooth(method="loess",geom="line",color="blue",size=2)
+```
+
+
+
+
+```{r}
+ggplot(cider)+aes(x=Sweetness, y = Bitterness, col = Type, group = Type)+ geom_point(size = 0.5) + stat_smooth()
+```
+
+
+```{r}
+ggplot(cider)+aes(x=Sweetness, y = Bitterness)+ geom_point(size = 0.5) + stat_smooth(method ="lm") +  facet_grid(.~Type)
+
+```
+```{r}
+library(plotly)
+ggplot(cider, aes(x = Type, y = Sweetness)) +  geom_boxplot()
+ggplotly()
+```
+
+
+
+
+```{r}
+p2 <- ggplot(cider)+aes(x=Bitterness,y=Sweetness, color= Acid)+
+geom_point()
+p2
+p2+scale_color_gradient(low="red",high="yellow")
+```
+
+
+
+
+

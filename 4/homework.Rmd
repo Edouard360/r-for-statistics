@@ -1,0 +1,107 @@
+---
+title: "Homework"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Reconstruction with PCA 
+
+## Approximation of the ozone data
+
+Air pollution is currently one of the most serious public health worries worldwide. 
+The data is contained in the file ozone.txt.
+
+### 1 - Perform the PCA on the ozone data
+
+```{r}
+library(FactoMineR)
+Ozone <-  read.table("ozone.txt",header = TRUE, sep = " ", row.names = 1)
+res.pca <- PCA(Ozone , quanti.sup =1,  quali.sup = 12:13,graph=FALSE)
+
+plot(res.pca, choix = "var", axes = c(1, 2),label = "quanti.sup")
+plot(res.pca, choix = "ind", habillage = ncol(Ozone), cex = 0.8,label = "quali")
+```
+
+
+##### Interpretation of the observation plot
+
+```{r}
+plot(res.pca, choix = "var", axes = c(1, 2),label = "var",col.var="brown")
+```
+
+##### Correlation between variables
+
+We can separate our variables into 3 high within-correlation sets:
+
+ * T9,T12,T15
+ * Ne9, Ne12, Ne15
+ * Wx9, Wx12, Wx15
+ 
+##### Percentage of variability
+
+The end points of the projected vectors are very close to the circle. It means the norm of the vectors hasn't been affected that much by the projection. Overall, the PCA preserved the variance of the Ozone data.
+
+
+```{r}
+res.pca$eig[1:2,]
+```
+
+Dim 1 stands for 54.94% of the variance distribution.
+
+Dim 2 stands for 18,45% of the variance distribution.
+
+Overall, __73.39% of the variance distribution is preserved__, which is satisfying.
+
+
+##### Explain the interest of performing this PCA before a regression
+
+PCA enables us to graphically __approximate the variables correlation__. Since regression is only meaningful for correlated variables, we can perform PCA before performing regression.
+
+Besides we can evaluate beforehand what the general tendendy of the regression will be. For instance, maxO3 is positively correlated with T15, but negatively correlated with Ne15.
+
+
+
+### 2 - Reconstruct the data
+
+With the PCA outputs, one could reconstruct the data. First, reconstruct the data with one dimension. You should be aware that with the results of PCA, you could reconstruct the centered and scaled data, so that you may need to add the means and multiply by the standard deviations to get the approximation of the original matrix.
+
+```{r}
+# Data on the first dimension
+ind_proj<-(matrix(res.pca$ind$coord[,1]))
+# Variable on the first dimension
+var_proj<-t(matrix(res.pca$var$coord[,1]))
+Ozone_reconstruct <- ind_proj %*% var_proj
+Ozone_r <- data.frame(Ozone_reconstruct)
+colnames(Ozone_r) <- names(Ozone)[1:10]
+Ozone_r
+
+numO <- Ozone[,1:10]
+moyO <- apply(Ozone[,1:10],2,sd)
+sdO <- apply(Ozone[,1:10],2,sd)
+
+Ozone_r <- sweep(Ozone_r,2,moyO,FUN="+")
+Ozone_r <- sweep(Ozone_r,2,sdO,FUN="*")
+plot(Ozone[,1])
+plot(Ozone_r[,1])
+```
+
+
+#### Plotting the maxO3y variable
+
+Calling Xˆ the reconstructed matrix, observe the difference between X and Xˆ by plotting the variable maxO3y for the two matrices in function of the observations. Comment.
+
+
+• Build a function to reconstruct the data with a specific number of dimensions. Then, reconstruct the data with 2 to 4 dimensions and represent different variables (observed and estimated). Comment your results with respect to the correlation circle.
+Reconstruct of an image
+Import the data missing.jpg or breton.png and reconstruct the image with 1 to 100 dimensions. There are different packages dedicated to images. With the following lines of code, you could read an image, reprensent it and then transform it in a grey scale. (Be careful that you may need to execute the code in the R console and not by knitting).
+Note that the library EBIimage can be troublesome to install. If it doesn’t work, you can use the packages jpeg and png.
+library("EBImage")
+img <- readImage("missing.jpg") display(img, method = "raster")
+library(ripa)
+r <- imagematrix(img, type = "grey") display(r, method = "raster")
+1
+Using the grey image, reconstruct the image with 1 to 100 dimensions (with PCA and reconst function of FactoMineR) and export the reconstructed images in a folder with the names “missing_ncp_1” to “missing_ncp_100”. You should use the packages “jpeg” and “png” to export the image with functions
+‘writePNG’ for instance. Comment.

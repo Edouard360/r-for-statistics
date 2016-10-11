@@ -1,0 +1,68 @@
+---
+title: "Practice4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1 - Center the data
+
+```{r}
+library(FactoMineR)
+data(decathlon)
+
+numDec <- decathlon[,1:12]
+moyD <- colMeans(numDec)
+sdD <- apply(decathlon[,1:12],2,sd)
+
+numDec <- sweep(numDec,2,moyD,FUN="-")
+numDec <- sweep(numDec,2,sdD,FUN="/")
+
+decathlon[,1:12] <- numDec
+```
+
+## 2 - Illustrative variables
+
+```{r}
+#is.factor() could be useful
+res.pca <- PCA(decathlon, quanti.sup = 11:12 , quali.sup = 13) #illustrative = supplémentaire
+# 10 variables => sum eigen values = 10
+summary(res.pca, nbelements = 5, ncp = 4) 
+# ncp : nombre de composants principaux to display 
+# nbelements : arbitrairement nombre des premières variables
+barplot(res.pca$eig[,1], main = "Eigenvalues",names.arg = paste("Dim",1:nrow(res.pca$eig), sep=""))
+plot(res.pca, choix = "ind", axes = c(1, 2),label = "none")
+plot(res.pca, choix = "var", axes = c(3, 4)) # ctr stands for contribution
+```
+
+## 3 - Percentage for the two dimensions
+
+High percentage to show correlation and interprete data
+
+## 4 - Correlation
+
+Individuals to the right are strong in every discipline.
+
+```{r}
+?plot.PCA
+summary(res.pca$ind)
+cor(decathlon$`100m`,decathlon$`110m.hurdle`) # 0.5798889
+cor(decathlon$`100m`,decathlon$Long.jump) # -0.5986777
+d_contr<-res.pca$ind$contrib
+uldal <- d_contr[row.names(d_contr)%in%"Uldal"]
+macey <- d_contr[row.names(d_contr)%in%"Macey"]
+data.frame(rbind(uldal,macey))
+```
+
+```{r}
+plot.PCA(res.pca, choix = "ind", habillage = ncol(decathlon), cex = 0.7)
+plot.PCA(res.pca, choix = "ind", habillage = ncol(decathlon), cex = 0.7,autolab = "no")
+plot(res.pca, select = "cos2 0.8",  invisible = "quali")
+plot(res.pca, select = "contrib 10")
+plot(res.pca, choix = "var", select = "contrib 8", unselect = 0)
+plot(res.pca, choix = "var", select = c("400m", "1500m"))
+plot(res.pca, choix = "ind", select = c("CLAY", "NOOL"),invisible = "quali",unselect = 0)
+```
+
