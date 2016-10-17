@@ -71,3 +71,8 @@ plot(res.pca, choix = "var", axes = c(3, 4)) # ctr stands for contribution
 #lim.cos2.var=0.5,
 #select = "contrib 10"
 
+yt = list()
+for (i in seq(10,100,30)) yt=c(yt, reconst(img.pca,ncp=i))
+yt = combine(yt)
+display(resize(yt, 256, 256), method = "raster", all = TRUE)
+#writePNG

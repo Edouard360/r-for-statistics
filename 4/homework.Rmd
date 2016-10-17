@@ -18,8 +18,13 @@ The data is contained in the file ozone.txt.
 
 ```{r}
 library(FactoMineR)
+library(reshape2)
+library(ggplot2)
+library(png)
+library(EBImage)
+library(ripa)
 Ozone <-  read.table("ozone.txt",header = TRUE, sep = " ", row.names = 1)
-res.pca <- PCA(Ozone , quanti.sup =1,  quali.sup = 12:13,graph=FALSE)
+res.pca <- PCA(Ozone , quanti.sup =1,quali.sup = 12:13,graph=FALSE,ncp=15)
 
 plot(res.pca, choix = "var", axes = c(1, 2),label = "quanti.sup")
 plot(res.pca, choix = "ind", habillage = ncol(Ozone), cex = 0.8,label = "quali")
@@ -66,7 +71,13 @@ Besides we can evaluate beforehand what the general tendendy of the regression w
 
 ### 2 - Reconstruct the data
 
-With the PCA outputs, one could reconstruct the data. First, reconstruct the data with one dimension. You should be aware that with the results of PCA, you could reconstruct the centered and scaled data, so that you may need to add the means and multiply by the standard deviations to get the approximation of the original matrix.
+With the PCA outputs, one could reconstruct the data. First, reconstruct the data with one dimension. You should be aware that with the results of PCA, you could reconstruct the centered and scaled data, so that you may need to _add the means_ and _multiply by the standard deviations_ to get the approximation of the original matrix.
+
+<br />
+
+Here we manually reconstruct
+
+<br />
 
 ```{r}
 # Data on the first dimension
@@ -75,33 +86,163 @@ ind_proj<-(matrix(res.pca$ind$coord[,1]))
 var_proj<-t(matrix(res.pca$var$coord[,1]))
 Ozone_reconstruct <- ind_proj %*% var_proj
 Ozone_r <- data.frame(Ozone_reconstruct)
-colnames(Ozone_r) <- names(Ozone)[1:10]
-Ozone_r
+colnames(Ozone_r) <- names(Ozone)[2:11]
 
-numO <- Ozone[,1:10]
-moyO <- apply(Ozone[,1:10],2,sd)
-sdO <- apply(Ozone[,1:10],2,sd)
+numO <- Ozone[,2:11]
+moyO <- apply(Ozone[,2:11],2,mean)
+sdO <- apply(Ozone[,2:11],2,sd)
 
-Ozone_r <- sweep(Ozone_r,2,moyO,FUN="+")
 Ozone_r <- sweep(Ozone_r,2,sdO,FUN="*")
-plot(Ozone[,1])
-plot(Ozone_r[,1])
+Ozone_r <- sweep(Ozone_r,2,moyO,FUN="+")
+
+plot(Ozone[,"maxO3y"])
+plot(Ozone_r[,"maxO3y"])
 ```
 
-
-#### Plotting the maxO3y variable
+### 3 - Plotting the maxO3y variable
 
 Calling Xˆ the reconstructed matrix, observe the difference between X and Xˆ by plotting the variable maxO3y for the two matrices in function of the observations. Comment.
 
+```{r}
+Ozone_m <- data.frame(X=1:nrow(Ozone), max03 =Ozone[,"maxO3y"], max03_r = Ozone_r[,"maxO3y"])
+Ozone_m <- melt(Ozone_m, id.vars = "X")
+ggplot(Ozone_m, aes(x = X, y = value, color = variable)) +theme_bw() +geom_line()
+```
 
-• Build a function to reconstruct the data with a specific number of dimensions. Then, reconstruct the data with 2 to 4 dimensions and represent different variables (observed and estimated). Comment your results with respect to the correlation circle.
-Reconstruct of an image
+The variance of the maxO3 variable has mostly been preserved.
+<br/>
+We then observe ```maxO3y = f(Wx15)``` __after projection__...
+
+```{r}
+ggplot(Ozone_r, aes(x = Wx15, y = maxO3y))+geom_line()
+```
+
+The linear relation obtained here is not surprising. (We projected on a one-dimensionnal space).
+
+Below is the original relation between those two variables.
+
+```{r}
+ggplot(Ozone, aes(x = Wx15, y = maxO3y))+geom_line()+geom_smooth()
+```
+
+### 4 - Function to reconstruct the data with d dimensions
+<br/>
+_Note_ : I tried to write a reconstruct function by hand, by it seems it doesn't fit with the reconst function provided with the PCA
+<br/>
+
+```{r}
+reconstruct <- function(d){
+  
+  # Data on the first dimension
+  ind_proj<-(as.matrix(res.pca$ind$coord[,1:d]))
+  # Variable on the first dimension
+  var_proj<-t(as.matrix(res.pca$var$coord[,1:d]))
+  Ozone_tmp <- ind_proj %*% var_proj
+  Ozone_tmp <- data.frame(Ozone_tmp)
+  
+  Ozone_tmp <- sweep(Ozone_tmp,2,sdO,FUN="*")
+  Ozone_tmp <- sweep(Ozone_tmp,2,moyO,FUN="+")
+
+  return(Ozone_tmp)
+}
+```
+
+We will represent __maxO3y__, for the *original* and the *reconstructed* data (observed and estimated).
+
+```{r}
+represent <- function(Ozone_r){
+  Ozone_m <- data.frame(X=1:nrow(Ozone), max03y = Ozone[,"maxO3y"], max03y_r = Ozone_r[,"maxO3y"])
+  Ozone_m <- melt(Ozone_m, id.vars = "X")
+  ggplot(Ozone_m, aes(x = X, y = value, color = variable)) +theme_bw() +geom_line()
+}  
+```
+
+##### 2 dimensions
+
+```{r}
+represent(reconst(res.pca,ncp=2))
+represent(reconstruct(2))
+```
+
+##### 3 dimensions
+
+```{r}
+represent(reconst(res.pca,ncp=3))
+```
+
+##### 5 dimensions
+
+Already very close to the original data.
+
+```{r}
+represent(reconst(res.pca,ncp=5))
+```
+
+##### 10 dimensions
+
+Perfectly identical to the original data.
+
+```{r}
+Ozone_tmp <- reconst(res.pca,ncp=10) 
+
+# The data is already renormalized thanks to reconst
+# Otherwise, we could have done :
+# Ozone_tmp <- sweep(data.frame(Ozone_tmp),2,sdO,FUN="*")
+# Ozone_tmp <- sweep(Ozone_tmp,2,moyO,FUN="+")
+
+represent(Ozone_tmp)
+```
+
+##### Note
+
+If we wanted to have the coordinate of max03, along the PCA components
+
+```{r}
+res.pca$quanti.sup$coord[,1]
+```
+
+
+## Reconstruct of an image
+
 Import the data missing.jpg or breton.png and reconstruct the image with 1 to 100 dimensions. There are different packages dedicated to images. With the following lines of code, you could read an image, reprensent it and then transform it in a grey scale. (Be careful that you may need to execute the code in the R console and not by knitting).
-Note that the library EBIimage can be troublesome to install. If it doesn’t work, you can use the packages jpeg and png.
-library("EBImage")
-img <- readImage("missing.jpg") display(img, method = "raster")
-library(ripa)
-r <- imagematrix(img, type = "grey") display(r, method = "raster")
-1
-Using the grey image, reconstruct the image with 1 to 100 dimensions (with PCA and reconst function of FactoMineR) and export the reconstructed images in a folder with the names “missing_ncp_1” to “missing_ncp_100”. You should use the packages “jpeg” and “png” to export the image with functions
-‘writePNG’ for instance. Comment.
+
+```{r}
+img <- readImage("missing.jpg") 
+display(img, method = "raster")
+
+r <- imagematrix(img, type = "grey") 
+display(r, method = "raster")
+```
+
+Using the grey image, reconstruct the image with 1 to 100 dimensions (with PCA and reconst function of FactoMineR). You should use the packages “jpeg” and “png” to export the image with functions
+
+Let's display for these numbers of PCA components: 10,40,70,100
+
+```{r}
+img.pca = PCA(r, graph=FALSE,ncp = 100) 
+# 100 is the max number of principal components computed
+# reconstr(1:10)[2,]==reconstr(1)[2,] 
+
+for (i in seq(10,100,30)){
+  display(reconst(img.pca,ncp=i),method = "raster")
+}
+```
+
+The folder reconstruct will hold all the 100 images.
+
+```{r}
+dir.create("reconstruct")
+for (i in seq(1,100,1)){
+  png(filename=paste("reconstruct/",toString(i),".png",sep=""))
+  display(reconst(img.pca,ncp=i),method = "raster")
+  dev.off()
+}
+```
+
+##### Comment.
+
+We already get the overall shape of the picture using about __10 components from PCA__.
+
+We can clearly read the picture using __40 components__.
+
+Of course, the more elements, the clearer the picture, and we need approximately __100 components__ to distinguish the word "FOUNDATION" from the poster.

@@ -11,13 +11,14 @@ list(vins['nom_vins'])
 
 GApp <- aggregate(vins[,'G.Appreciation'],list(vins[,'nom_vins']),mean)
 OApp <- aggregate(vins[,'O.Appreciation'],list(vins[,'nom_vins']),mean)
+
 Total = OApp
 Total["x"] = Total["x"] + GApp["x"]
 toString(Total[which.max(Total$x),]$Group.1)
 
 library("ggplot2", lib.loc="/Library/Frameworks/R.framework/Versions/3.3/Resources/library")
 
-ggplot(vins)+aes(x=Sucree,y=G.Appreciation+O.Appreciation)+geom_point(size=0.5)+stat_smooth(method="lm") 
+ggplot(vins)+aes(x=Sucree,y=G.Appreciation+O.Appreciation)+geom_point(size=0.5)+stat_smooth(method="lm")
 
 ggplot(vins)+aes(x=Sucree, y = G.Appreciation+O.Appreciation, col=Sexe)+geom_point()+stat_smooth()
 
@@ -25,7 +26,7 @@ ggplot(vins)+aes(x=Astringent,y=..density.., col=Sexe)+geom_density()
 
 ggplot(vins)+aes(x=G.Appreciation, y =..density.., col=as.factor(seance))+geom_density()
 
-descriptors <-colnames(vins)[7:23] 
+descriptors <-colnames(vins)[7:23]
 VAgg <- aggregate(vins[,descriptors],list(vins[,'nom_vins']),mean,na.rm = T)
 DT = data.frame(row.names=VAgg$Group.1,VAgg[,0:-1])
 
@@ -36,7 +37,7 @@ DTmean <-apply(DT, 2, mean)
 DT <-sweep(DT, 2, STATS= DTmean, FUN = "-")
 DTsd <-apply(DT, 2, sd)
 DT <-sweep(DT, 2, STATS= DTsd, FUN = "/")
-correlation <- cor(DT) 
+correlation <- cor(DT)
 plot(correlation[,"G.Appreciation"])
 
 #setwd("")
@@ -61,5 +62,5 @@ options(warn=0)
 trauma_rows_deleted = trauma[complete.cases(trauma),]
 
 trauma[,"BMI"] <- as.numeric(gsub(",", as.character(trauma[,"BMI"]), replacement = "."))
-mecanismeCount <- as.data.frame(table(trauma$Mecanisme)) 
-mecanismeCount[which.max(mecanismeCount[,2]),1] 
+mecanismeCount <- as.data.frame(table(trauma$Mecanisme))
+mecanismeCount[which.max(mecanismeCount[,2]),1]
