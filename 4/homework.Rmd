@@ -24,7 +24,7 @@ library(png)
 library(EBImage)
 library(ripa)
 Ozone <-  read.table("ozone.txt",header = TRUE, sep = " ", row.names = 1)
-res.pca <- PCA(Ozone , quanti.sup =1,quali.sup = 12:13,graph=FALSE,ncp=15)
+res.pca <- PCA(Ozone , quanti.sup =1,quali.sup = 12:13,graph=FALSE,ncp=10)
 
 plot(res.pca, choix = "var", axes = c(1, 2),label = "quanti.sup")
 plot(res.pca, choix = "ind", habillage = ncol(Ozone), cex = 0.8,label = "quali")
@@ -75,25 +75,17 @@ With the PCA outputs, one could reconstruct the data. First, reconstruct the dat
 
 <br />
 
-Here we manually reconstruct
+Here we manually reconstruct the 10 features by multiplying the coordinates of our variables in the new base, by the vectors of the new base - ie. their coordinates in their previous base.
 
 <br />
 
 ```{r}
-# Data on the first dimension
-ind_proj<-(matrix(res.pca$ind$coord[,1]))
-# Variable on the first dimension
-var_proj<-t(matrix(res.pca$var$coord[,1]))
-Ozone_reconstruct <- ind_proj %*% var_proj
-Ozone_r <- data.frame(Ozone_reconstruct)
-colnames(Ozone_r) <- names(Ozone)[2:11]
-
-numO <- Ozone[,2:11]
-moyO <- apply(Ozone[,2:11],2,mean)
-sdO <- apply(Ozone[,2:11],2,sd)
-
-Ozone_r <- sweep(Ozone_r,2,sdO,FUN="*")
-Ozone_r <- sweep(Ozone_r,2,moyO,FUN="+")
+coord.var = as.matrix(res.pca$var$coord)[, 1, drop = F]
+coord.ind = as.matrix(res.pca$ind$coord)[, 1, drop = F]
+Ozone_r = coord.ind %*% t(sweep(coord.var, 2, sqrt(res.pca$eig[1,1]), FUN = "/"))
+Ozone_r = sweep(Ozone_r, 2, res.pca$call$ecart.type, FUN = "*")
+Ozone_r = sweep(Ozone_r, 2, res.pca$call$centre, FUN = "+")
+Ozone_r= data.frame(Ozone_r)
 
 plot(Ozone[,"maxO3y"])
 plot(Ozone_r[,"maxO3y"])
@@ -109,12 +101,16 @@ Ozone_m <- melt(Ozone_m, id.vars = "X")
 ggplot(Ozone_m, aes(x = X, y = value, color = variable)) +theme_bw() +geom_line()
 ```
 
-The variance of the maxO3 variable has mostly been preserved.
+##### Comment
+
+The variance of the maxO3 variable has mostly been preserved. The result even after projection on a 1-dimensionnal space, is already close to the final data ! That is because max03y has a important composant according to the first PCA component. 
+
 <br/>
-We then observe ```maxO3y = f(Wx15)``` __after projection__...
+
+We can then observe ```maxO3y = f(T9)``` __after projection__...
 
 ```{r}
-ggplot(Ozone_r, aes(x = Wx15, y = maxO3y))+geom_line()
+ggplot(Ozone_r, aes(x = T9, y = maxO3y))+geom_line()
 ```
 
 The linear relation obtained here is not surprising. (We projected on a one-dimensionnal space).
@@ -122,28 +118,24 @@ The linear relation obtained here is not surprising. (We projected on a one-dime
 Below is the original relation between those two variables.
 
 ```{r}
-ggplot(Ozone, aes(x = Wx15, y = maxO3y))+geom_line()+geom_smooth()
+ggplot(Ozone, aes(x = T9, y = maxO3y))+geom_line()+geom_smooth()
 ```
 
 ### 4 - Function to reconstruct the data with d dimensions
 <br/>
-_Note_ : I tried to write a reconstruct function by hand, by it seems it doesn't fit with the reconst function provided with the PCA
+We write a reconstruct function by hand.
 <br/>
 
 ```{r}
-reconstruct <- function(d){
-  
-  # Data on the first dimension
-  ind_proj<-(as.matrix(res.pca$ind$coord[,1:d]))
-  # Variable on the first dimension
-  var_proj<-t(as.matrix(res.pca$var$coord[,1:d]))
-  Ozone_tmp <- ind_proj %*% var_proj
-  Ozone_tmp <- data.frame(Ozone_tmp)
-  
-  Ozone_tmp <- sweep(Ozone_tmp,2,sdO,FUN="*")
-  Ozone_tmp <- sweep(Ozone_tmp,2,moyO,FUN="+")
-
-  return(Ozone_tmp)
+reconstruct <- function (res, ncp) {
+  ncp <- min(ncp, ncol(res$ind$coord))
+  coord.var = as.matrix(res$var$coord)[, 1:ncp, drop = F]
+  coord.ind = as.matrix(res$ind$coord)[, 1:ncp, drop = F]
+  hatX = coord.ind %*% t(sweep(coord.var, 2, sqrt(res$eig[1:ncp,1]), FUN = "/"))
+  hatX = sweep(hatX, 2, res$call$ecart.type, FUN = "*")
+  hatX = sweep(hatX, 2, res$call$centre, FUN = "+")
+  hatX = data.frame(hatX)
+  return(hatX)
 }
 ```
 
@@ -160,14 +152,15 @@ represent <- function(Ozone_r){
 ##### 2 dimensions
 
 ```{r}
-represent(reconst(res.pca,ncp=2))
-represent(reconstruct(2))
+represent(reconstruct(res.pca,ncp=4))
 ```
 
 ##### 3 dimensions
 
+We can also use the reconst function provided in the FactoMineR package.
+
 ```{r}
-represent(reconst(res.pca,ncp=3))
+represent(reconst(res.pca,ncp=10))
 ```
 
 ##### 5 dimensions
@@ -246,3 +239,5 @@ We already get the overall shape of the picture using about __10 components from
 We can clearly read the picture using __40 components__.
 
 Of course, the more elements, the clearer the picture, and we need approximately __100 components__ to distinguish the word "FOUNDATION" from the poster.
+
+
